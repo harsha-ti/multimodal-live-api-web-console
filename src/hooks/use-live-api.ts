@@ -43,6 +43,7 @@ export function useLiveAPI({
     [url, apiKey],
   );
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
+  const isUserDisconnectedRef = useRef<boolean>(false);
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<LiveConfig>({
@@ -71,7 +72,8 @@ export function useLiveAPI({
     let reconnectTimeout: NodeJS.Timeout;
 
     const onClose = async () => {
-      if (isReconnecting) return;
+      // Don't attempt to reconnect if user initiated the disconnect
+      if (isReconnecting || isUserDisconnectedRef.current) return;
       
       isReconnecting = true;
       setConnected(false);
@@ -138,12 +140,14 @@ export function useLiveAPI({
     if (!config) {
       throw new Error("config has not been set");
     }
+    isUserDisconnectedRef.current = false; // Reset the flag when user connects
     client.disconnect();
     await client.connect(config);
     setConnected(true);
   }, [client, setConnected, config]);
 
   const disconnect = useCallback(async () => {
+    isUserDisconnectedRef.current = true; // Set flag to indicate user-initiated disconnect
     client.disconnect();
     setConnected(false);
   }, [setConnected, client]);
